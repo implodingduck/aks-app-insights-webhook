@@ -36,21 +36,24 @@ https.createServer(options, (req, res) => {
             console.log("----------")
             console.log(`Containers: ${JSON.stringify(jsonBody.request.object.spec.containers)}`)
             let jsonPatch = null
-            let hasSidecar = false
+            let hasInitcon = false
             let cloudrolename = ""
-            for( let c of jsonBody.request.object.spec.containers){
-                if (c.name === 'app-insights-sidecar'){
-                    console.log("found app-insights-sidecar")
-                    hasSidecar = true
-                }else{
-                    cloudrolename = (cloudrolename.length > 0 ) ? `,${c.name}` : c.name
+            if(newJsonBody.request.object.spec.initContainers){
+                for( let c of jsonBody.request.object.spec.initContainers){
+                    if (c.name === 'app-insights-sidecar'){
+                        console.log("found app-insights-sidecar")
+                        hasInitcon = true
+                    }
                 }
             }
-            if(!hasSidecar && cloudrolename.length > 0){
+            for( let c of jsonBody.request.object.spec.containers){
+                cloudrolename = (cloudrolename.length > 0 ) ? `,${c.name}` : c.name
+            }
+            if(!hasInitcon && cloudrolename.length > 0){
                 console.log("adding app-insights-sidecar")
                 let sidecarJson = {
                     "name":"app-insights-sidecar",
-                    "image":"ghcr.io/implodingduck/az-tf-util-image:latest",
+                    "image":"busybox:latest",
                     "env":[
                         {
                             "name":"APPLICATIONINSIGHTS_ROLE_NAME",
@@ -75,10 +78,12 @@ https.createServer(options, (req, res) => {
                         }
                     ],
                     "imagePullPolicy":"Always",
-                    "command": ["/bin/bash", "-c"],
-                    "args": [`/bin/echo '{\"role\": { \"name\": \"${cloudrolename}\" }}' > /opt/target/config/appinsights.json`]
+                    "command": ["/bin/sh", "-c", `/bin/echo '{\"role\": { \"name\": \"${cloudrolename}\" }}' > /opt/target/config/appinsights.json`]
                 }
-                newJsonBody.request.object.spec.containers.push(sidecarJson)
+                if(!newJsonBody.request.object.spec.initContainers){
+                    newJsonBody.request.object.spec.initContainers = []
+                }
+                newJsonBody.request.object.spec.initContainers.push(sidecarJson)
                 newJsonBody.request.object.spec.containers[0].env.push({
                     "name": "APPLICATIONINSIGHTS_CONFIGURATION_FILE",
                     "value": "/opt/target/config/applicationinsights.json"
