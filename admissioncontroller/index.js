@@ -50,7 +50,7 @@ https.createServer(options, (req, res) => {
                 console.log("adding app-insights-sidecar")
                 let sidecarJson = {
                     "name":"app-insights-sidecar",
-                    "image":"ghcr.io/implodingduck/az-tf-util-images:latest",
+                    "image":"ghcr.io/implodingduck/az-tf-util-image:latest",
                     "env":[
                         {
                             "name":"APPLICATIONINSIGHTS_ROLE_NAME",
