@@ -1,11 +1,11 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: app-insights-sidecar-webhook
+  name: app-insights-webhook
   namespace: kube-system
 spec:
   selector:
-    app: app-insights-sidecar-webhook
+    app: app-insights-webhook
   ports:
     - port: 443
       targetPort: 8443

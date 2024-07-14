@@ -36,7 +36,64 @@ https.createServer(options, (req, res) => {
             console.log("----------")
             console.log(`Containers: ${JSON.stringify(jsonBody.request.object.spec.containers)}`)
             let jsonPatch = null
-            
+            let hasSidecar = false
+            let cloudrolename = ""
+            for( let c of jsonBody.request.object.spec.containers){
+                if (c.name === 'app-insights-sidecar'){
+                    console.log("found app-insights-sidecar")
+                    hasSidecar = true
+                }else{
+                    cloudrolename = (cloudrolename.length > 0 ) ? `,${c.name}` : c.name
+                }
+            }
+            if(!hasSidecar && cloudrolename.length > 0){
+                console.log("adding app-insights-sidecar")
+                let sidecarJson = {
+                    "name":"app-insights-sidecar",
+                    "image":"ghcr.io/implodingduck/az-tf-util:latest",
+                    "env":[
+                        {
+                            "name":"APPLICATIONINSIGHTS_ROLE_NAME",
+                            "value": cloudrolename
+                        },{
+                            "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                            "valueFrom": {
+                                "secretKeyRef": {
+                                    "name": "workidsyncsecret",
+                                    "key": "appinsightsconnectionstring"
+                                }
+                            }
+                        },
+
+                    ],
+                    "resources":{},
+                    "volumeMounts":[
+                        {
+                            "name":"target-config",
+                            "mountPath":"/opt/target/config",
+                            "readOnly": false
+                        }
+                    ],
+                    "imagePullPolicy":"Always",
+                    "command": ["/bin/bash", "-c"],
+                    "args": [`/bin/echo '{\"role\": { \"name\": \"${cloudrolename}\" }}' > /opt/target/config/appinsights.json`]
+                }
+                newJsonBody.request.object.spec.containers.push(sidecarJson)
+                newJsonBody.request.object.spec.containers[0].env.push({
+                    "name": "APPLICATIONINSIGHTS_CONFIGURATION_FILE",
+                    "value": "/opt/target/config/applicationinsights.json"
+                })
+                newJsonBody.request.object.spec.containers[0].volumeMounts.push({
+                    "name":"target-config",
+                    "mountPath":"/opt/target/config",
+                    "readOnly": false
+                })
+                newJsonBody.request.object.spec.volumes.push({
+                    "name":"target-config",
+                    "emptyDir": {}
+                })
+                jsonPatch = rfc6902.createPatch(jsonBody.request.object, newJsonBody.request.object)
+            }
             res.writeHead(200, { "Content-Type": "application/json" });
             
             let resp = {
