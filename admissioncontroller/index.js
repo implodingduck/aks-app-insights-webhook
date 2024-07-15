@@ -86,7 +86,7 @@ https.createServer(options, (req, res) => {
                 newJsonBody.request.object.spec.initContainers.push(sidecarJson)
                 newJsonBody.request.object.spec.containers[0].env.push({
                     "name": "APPLICATIONINSIGHTS_CONFIGURATION_FILE",
-                    "value": "/opt/target/config/applicationinsights.json"
+                    "value": "/opt/target/config/appinsights.json"
                 })
                 newJsonBody.request.object.spec.containers[0].volumeMounts.push({
                     "name":"target-config",
